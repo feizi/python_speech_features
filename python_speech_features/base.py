@@ -2,7 +2,9 @@
 # Author: James Lyons 2012
 from __future__ import division
 import numpy
-from python_speech_features import sigproc
+import sys
+sys.path.append('./python_speech_features')
+import sigproc
 from scipy.fftpack import dct
 
 def mfcc(signal,samplerate=16000,winlen=0.025,winstep=0.01,numcep=13,
@@ -51,7 +53,7 @@ def fbank(signal,samplerate=16000,winlen=0.025,winstep=0.01,
         second return value is the energy in each frame (total energy, unwindowed)
     """
     highfreq= highfreq or samplerate/2
-    signal = sigproc.preemphasis(signal,preemph)
+    signal = sigproc.preemphasis(signal,preemph, int(sigproc.round_half_up(winstep*samplerate)))
     frames = sigproc.framesig(signal, winlen*samplerate, winstep*samplerate, winfunc)
     pspec = sigproc.powspec(frames,nfft)
     energy = numpy.sum(pspec,1) # this stores the total energy in each frame
