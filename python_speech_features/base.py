@@ -2,8 +2,121 @@
 # Author: James Lyons 2012
 from __future__ import division
 import numpy
+import numpy as np
 from python_speech_features import sigproc
 from scipy.fftpack import dct
+import math
+
+def mfcc_HTK(signal,samplerate=16000,winlen=0.025,winstep=0.01,numcep=13,
+         nfilt=26,nfft=512,lowfreq=0,highfreq=None,preemph=0.97,ceplifter=22,appendEnergy=True,
+         winfunc=lambda x:numpy.ones((x,))):
+    """
+    modify mfcc based on HTK optimazation
+    
+    1. excludes the spectrogram DC bin
+    2. use a particular scaling of the DCT-II
+    """
+
+    ## fbank
+    highfreq= highfreq or samplerate/2
+    #signal = sigproc.preemphasis(signal,preemph)
+    frames = get_frames(signal, winlen*samplerate, winstep*samplerate, winfunc)
+    if numpy.shape(frames)[1] > nfft:
+        logging.warn(
+            'frame length (%d) is greater than FFT size (%d), frame will be truncated. Increase NFFT to avoid.',
+            numpy.shape(frames)[1], NFFT)
+    complex_spec = numpy.fft.rfft(frames, nfft)
+    pspec = numpy.absolute(complex_spec)
+    
+    #energy = numpy.sum(pspec,1) # this stores the total energy in each frame
+    #energy = numpy.where(energy == 0,numpy.finfo(float).eps,energy) # if energy is zero, we get problems with log
+
+    linear_matrix = linear_to_mel_weight_matrix(nfilt, num_spectrogram_bins=pspec.shape[-1], sample_rate=samplerate, lower_edge_hertz=lowfreq, upper_edge_hertz=highfreq)
+    feat = numpy.dot(pspec,linear_matrix) # compute the filterbank energies
+    #feat = numpy.where(feat == 0,numpy.finfo(float).eps,feat) # if feat is zero, we get problems with log
+    feat = numpy.log(feat+ 1e-6)
+
+    ## DCT    
+    feat = dct(feat, type=2, axis=1)[:,:numcep]
+    feat = feat / math.sqrt(nfilt * 2.0)
+    return feat
+
+
+def linear_to_mel_weight_matrix(num_mel_bins=20,
+                                num_spectrogram_bins=129,
+                                sample_rate=8000,
+                                lower_edge_hertz=125.0,
+                                upper_edge_hertz=3800.0):
+    bands_to_zero = 1
+    nyquist_hertz = sample_rate / 2.0
+    linear_frequencies = numpy.linspace(
+        0, nyquist_hertz, num_spectrogram_bins)[bands_to_zero:]
+    spectrogram_bins_mel = numpy.expand_dims(hz2mel(linear_frequencies),1)
+    
+    melpoints = numpy.linspace(hz2mel(lower_edge_hertz),hz2mel(upper_edge_hertz),num_mel_bins+2)
+    lower_edge_mel = numpy.zeros((1, num_mel_bins))
+    center_mel = numpy.zeros((1, num_mel_bins))
+    upper_edge_mel = numpy.zeros((1, num_mel_bins))
+
+    for i in range(num_mel_bins):
+        lower_edge_mel[0,i] = melpoints[i]
+        center_mel[0,i] = melpoints[i+1]
+        upper_edge_mel[0,i] = melpoints[i+2]
+    
+    lower_slopes = (spectrogram_bins_mel - lower_edge_mel) / (
+        center_mel - lower_edge_mel)
+    upper_slopes = (upper_edge_mel - spectrogram_bins_mel) / (
+        upper_edge_mel - center_mel)
+
+    mel_weights_matrix = numpy.maximum(0, numpy.minimum(lower_slopes, upper_slopes))
+    mel_weights_matrix = numpy.pad(mel_weights_matrix, [[bands_to_zero, 0], [0, 0]], 'constant', constant_values=(0,0))
+ 
+    return mel_weights_matrix
+
+def get_frames(sig, frame_len, frame_step, winfunc=lambda x: numpy.ones((x,)), stride_trick=True):
+    """Frame a signal into overlapping frames.
+
+    :param sig: the audio signal to frame.
+    :param frame_len: length of each frame measured in samples.
+    :param frame_step: number of samples after the start of the previous frame that the next frame should begin.
+    :param winfunc: the analysis window to apply to each frame. By default no window is applied.
+    :param stride_trick: use stride trick to compute the rolling window and window multiplication faster
+    :returns: an array of frames. Size is NUMFRAMES by frame_len.
+    """
+    slen = len(sig)
+    frame_len = int((frame_len))
+    frame_step = int((frame_step))
+    if slen <= frame_len:
+        numframes = 1
+    else:
+        numframes = 1 + int((1.0 * slen - frame_len) / frame_step)
+    
+
+    #padlen = int((numframes - 1) * frame_step + frame_len)
+    #zeros = numpy.zeros((padlen - slen,))
+    #padsignal = numpy.concatenate((sig, zeros))
+    padsignal = sig
+
+
+    if stride_trick:
+        win = winfunc(frame_len)
+        frames = rolling_window(padsignal, window=frame_len, step=frame_step)
+    else:
+        indices = numpy.tile(numpy.arange(0, frame_len), (numframes, 1)) + numpy.tile(
+            numpy.arange(0, numframes * frame_step, frame_step), (frame_len, 1)).T
+        indices = numpy.array(indices, dtype=numpy.int32)
+        frames = padsignal[indices]
+        win = numpy.tile(winfunc(frame_len), (numframes, 1))
+
+    return frames * win
+
+def rolling_window(a, window, step=1):
+    # http://ellisvalentiner.com/post/2017-03-21-np-strides-trick
+    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
+    strides = a.strides + (a.strides[-1],)
+    return numpy.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)[::step]
+
+    
 
 def mfcc(signal,samplerate=16000,winlen=0.025,winstep=0.01,numcep=13,
          nfilt=26,nfft=512,lowfreq=0,highfreq=None,preemph=0.97,ceplifter=22,appendEnergy=True,
@@ -188,3 +301,59 @@ def delta(feat, N):
     for t in range(NUMFRAMES):
         delta_feat[t] = numpy.dot(numpy.arange(-N, N+1), padded[t : t+2*N+1]) / denominator   # [t : t+2*N+1] == [(N+t)-N : (N+t)+N+1]
     return delta_feat
+
+
+def linear_to_mel_weight_matrix_test(num_mel_bins=12,
+                                num_spectrogram_bins=512,
+                                sample_rate=16000,
+                                lower_edge_hertz=0,
+                                upper_edge_hertz=4000):
+
+
+    matrix1 = linear_to_mel_weight_matrix(num_mel_bins, 257, sample_rate, lower_edge_hertz, upper_edge_hertz)
+    matrix2 = get_filterbanks(nfilt=num_mel_bins,nfft=num_spectrogram_bins,samplerate=sample_rate,lowfreq=lower_edge_hertz,highfreq=upper_edge_hertz)
+    matrix3 = numpy.load('/home/xysun/workspace/ML-KWS-for-MCU/mel_weight.npy')
+    print('tensorflow', matrix3.shape)
+    matrix3 = numpy.reshape(matrix3, (257,26))
+    print(matrix3[:,1])
+
+    print("HTK",matrix1.shape, matrix1[:,1])
+    print("C",matrix2.shape, matrix2[1,:])
+    #diff = matrix1-matrix2
+  
+    #print(np.max(diff))
+
+def mfcc_HTK_test():
+    pcm = np.load('/home/xysun/workspace/ML-KWS-for-MCU/F20170327013_02pcm.npy')
+    stf = np.load('/home/xysun/workspace/ML-KWS-for-MCU/F20170327013_02stf.npy')
+    mfcc_tf = np.load('/home/xysun/workspace/ML-KWS-for-MCU/F20170327013_02mfcc.npy')
+    stf = np.reshape(stf, (11,257))
+    mfcc_tf = np.reshape(mfcc_tf, (11,13))
+    pcm=pcm.flatten()
+    print(pcm.shape)
+    print(stf.shape)
+    linear_matrix = linear_to_mel_weight_matrix(26, num_spectrogram_bins=257, sample_rate=16000, lower_edge_hertz=80, upper_edge_hertz=3800)
+    feat = numpy.dot(stf,linear_matrix) # compute the filterbank energies
+    #feat = numpy.where(feat == 0,numpy.finfo(float).eps,feat) # if feat is zero, we get problems with log
+    feat = numpy.log(feat+ 1e-6)
+
+    ## DCT    
+    feat = dct(feat, type=2, axis=1)[:,:13]
+    feat = feat / math.sqrt(26 * 2.0)
+
+
+    mfcc_htk = mfcc_HTK(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
+    mfcc_py = mfcc(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
+
+    print("tensorflow result:",mfcc_tf.shape, mfcc_tf[2,:])
+    print("python htk result:",mfcc_htk.shape, mfcc_htk[2,:])
+    print("python mfcc result:",mfcc_py.shape, mfcc_py[2,:])
+    print("tensorflow stf + htk dct:",feat.shape, feat[2,:])
+
+
+
+
+if __name__ == '__main__':
+
+   #linear_to_mel_weight_matrix_test(26, 512, 16000, 80, 3800)
+   mfcc_HTK_test()
