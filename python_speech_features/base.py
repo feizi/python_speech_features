@@ -39,6 +39,7 @@ def mfcc_HTK(signal,samplerate=16000,winlen=0.025,winstep=0.01,numcep=13,
     ## DCT    
     feat = dct(feat, type=2, axis=1)[:,:numcep]
     feat = feat / math.sqrt(nfilt * 2.0)
+    feat = lifter(feat,ceplifter)
     return feat
 
 
