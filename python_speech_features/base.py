@@ -6,6 +6,9 @@ import numpy as np
 from python_speech_features import sigproc
 from scipy.fftpack import dct
 import math
+import sys
+sys.path.append('../c_speech_features')
+import c_speech_features.c_speech_features_base as cbase
 
 def mfcc_HTK(signal,samplerate=16000,winlen=0.025,winstep=0.01,numcep=13,
          nfilt=26,nfft=512,lowfreq=0,highfreq=None,preemph=0.97,ceplifter=22,appendEnergy=True,
@@ -325,9 +328,9 @@ def linear_to_mel_weight_matrix_test(num_mel_bins=12,
     #print(np.max(diff))
 
 def mfcc_HTK_test():
-    pcm = np.load('/home/xysun/workspace/ML-KWS-for-MCU/F20170327013_02pcm.npy')
-    stf = np.load('/home/xysun/workspace/ML-KWS-for-MCU/F20170327013_02stf.npy')
-    mfcc_tf = np.load('/home/xysun/workspace/ML-KWS-for-MCU/F20170327013_02mfcc.npy')
+    pcm = np.load('F20170327003_01pcm.npy')
+    stf = np.load('F20170327003_01stf.npy')
+    mfcc_tf = np.load('F20170327003_01mfcc.npy')
     stf = np.reshape(stf, (11,257))
     mfcc_tf = np.reshape(mfcc_tf, (11,13))
     pcm=pcm.flatten()
@@ -345,9 +348,14 @@ def mfcc_HTK_test():
 
     mfcc_htk = mfcc_HTK(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
     mfcc_py = mfcc(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
+    pcm *= 2**15
+    pcm = pcm.astype(np.short)
+    mfcc_htkc = cbase.mfcc(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
 
+    print("pcm:", pcm.shape)
     print("tensorflow result:",mfcc_tf.shape, mfcc_tf[2,:])
     print("python htk result:",mfcc_htk.shape, mfcc_htk[2,:])
+    print("c lib htk result:",mfcc_htkc.shape, mfcc_htkc[2,:])
     print("python mfcc result:",mfcc_py.shape, mfcc_py[2,:])
     print("tensorflow stf + htk dct:",feat.shape, feat[2,:])
 

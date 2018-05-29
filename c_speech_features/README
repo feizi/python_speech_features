@@ -1,0 +1,2 @@
+This libs are implemented by C, based on mfcc_HTK function.
+What need to pay attention to is the parameter *signal*. The type of signal must be short array.
