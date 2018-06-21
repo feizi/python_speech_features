@@ -94,20 +94,20 @@ except AttributeError:
 from c_speech_features import c_speech_features_sigproc as sigproc
 
 
-def mfcc(*args):
-    return _c_speech_features_base.mfcc(*args)
+def mfcc(*args, **kwargs):
+    return _c_speech_features_base.mfcc(*args, **kwargs)
 mfcc = _c_speech_features_base.mfcc
 
-def fbank(*args):
-    return _c_speech_features_base.fbank(*args)
+def fbank(*args, **kwargs):
+    return _c_speech_features_base.fbank(*args, **kwargs)
 fbank = _c_speech_features_base.fbank
 
-def logfbank(*args):
-    return _c_speech_features_base.logfbank(*args)
+def logfbank(*args, **kwargs):
+    return _c_speech_features_base.logfbank(*args, **kwargs)
 logfbank = _c_speech_features_base.logfbank
 
-def ssc(*args):
-    return _c_speech_features_base.ssc(*args)
+def ssc(*args, **kwargs):
+    return _c_speech_features_base.ssc(*args, **kwargs)
 ssc = _c_speech_features_base.ssc
 
 def hz2mel(hz):
@@ -118,12 +118,12 @@ def mel2hz(mel):
     return _c_speech_features_base.mel2hz(mel)
 mel2hz = _c_speech_features_base.mel2hz
 
-def get_filterbanks(*args):
-    return _c_speech_features_base.get_filterbanks(*args)
+def get_filterbanks(*args, **kwargs):
+    return _c_speech_features_base.get_filterbanks(*args, **kwargs)
 get_filterbanks = _c_speech_features_base.get_filterbanks
 
-def lifter(*args):
-    return _c_speech_features_base.lifter(*args)
+def lifter(*args, **kwargs):
+    return _c_speech_features_base.lifter(*args, **kwargs)
 lifter = _c_speech_features_base.lifter
 
 def delta(feat, N):
