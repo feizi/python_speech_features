@@ -7,8 +7,8 @@ from python_speech_features import sigproc
 from scipy.fftpack import dct
 import math
 import sys
-sys.path.append('../c_speech_features')
-import c_speech_features.c_speech_features_base as cbase
+#sys.path.append('../c_speech_features')
+#import c_speech_features.c_speech_features_base as cbase
 
 def mfcc_HTK(signal,samplerate=16000,winlen=0.025,winstep=0.01,numcep=13,
          nfilt=26,nfft=512,lowfreq=0,highfreq=None,preemph=0.97,ceplifter=22,appendEnergy=True,
@@ -327,42 +327,42 @@ def linear_to_mel_weight_matrix_test(num_mel_bins=12,
   
     #print(np.max(diff))
 
-def mfcc_HTK_test():
-    pcm = np.load('F20170327003_01pcm.npy')
-    stf = np.load('F20170327003_01stf.npy')
-    mfcc_tf = np.load('F20170327003_01mfcc.npy')
-    stf = np.reshape(stf, (11,257))
-    mfcc_tf = np.reshape(mfcc_tf, (11,13))
-    pcm=pcm.flatten()
-    print(pcm.shape)
-    print(stf.shape)
-    linear_matrix = linear_to_mel_weight_matrix(26, num_spectrogram_bins=257, sample_rate=16000, lower_edge_hertz=80, upper_edge_hertz=3800)
-    feat = numpy.dot(stf,linear_matrix) # compute the filterbank energies
-    #feat = numpy.where(feat == 0,numpy.finfo(float).eps,feat) # if feat is zero, we get problems with log
-    feat = numpy.log(feat+ 1e-6)
-
-    ## DCT    
-    feat = dct(feat, type=2, axis=1)[:,:13]
-    feat = feat / math.sqrt(26 * 2.0)
-
-
-    mfcc_htk = mfcc_HTK(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
-    mfcc_py = mfcc(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
-    pcm *= 2**15
-    pcm = pcm.astype(np.short)
-    mfcc_htkc = cbase.mfcc(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
-
-    print("pcm:", pcm.shape)
-    print("tensorflow result:",mfcc_tf.shape, mfcc_tf[2,:])
-    print("python htk result:",mfcc_htk.shape, mfcc_htk[2,:])
-    print("c lib htk result:",mfcc_htkc.shape, mfcc_htkc[2,:])
-    print("python mfcc result:",mfcc_py.shape, mfcc_py[2,:])
-    print("tensorflow stf + htk dct:",feat.shape, feat[2,:])
-
+#def mfcc_HTK_test():
+#    pcm = np.load('F20170327003_01pcm.npy')
+#    stf = np.load('F20170327003_01stf.npy')
+#    mfcc_tf = np.load('F20170327003_01mfcc.npy')
+#    stf = np.reshape(stf, (11,257))
+#    mfcc_tf = np.reshape(mfcc_tf, (11,13))
+#    pcm=pcm.flatten()
+#    print(pcm.shape)
+#    print(stf.shape)
+#    linear_matrix = linear_to_mel_weight_matrix(26, num_spectrogram_bins=257, sample_rate=16000, lower_edge_hertz=80, upper_edge_hertz=3800)
+#    feat = numpy.dot(stf,linear_matrix) # compute the filterbank energies
+#    #feat = numpy.where(feat == 0,numpy.finfo(float).eps,feat) # if feat is zero, we get problems with log
+#    feat = numpy.log(feat+ 1e-6)
+#
+#    ## DCT    
+#    feat = dct(feat, type=2, axis=1)[:,:13]
+#    feat = feat / math.sqrt(26 * 2.0)
+#
+#
+#    mfcc_htk = mfcc_HTK(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
+#    mfcc_py = mfcc(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
+#    pcm *= 2**15
+#    pcm = pcm.astype(np.short)
+#    mfcc_htkc = cbase.mfcc(pcm, samplerate=16000, winlen=0.03, winstep=0.09, numcep=13, lowfreq=80, highfreq=3800, preemph=0, appendEnergy=False)
+#
+#    print("pcm:", pcm.shape)
+#    print("tensorflow result:",mfcc_tf.shape, mfcc_tf[2,:])
+#    print("python htk result:",mfcc_htk.shape, mfcc_htk[2,:])
+#    print("c lib htk result:",mfcc_htkc.shape, mfcc_htkc[2,:])
+#    print("python mfcc result:",mfcc_py.shape, mfcc_py[2,:])
+#    print("tensorflow stf + htk dct:",feat.shape, feat[2,:])
+#
 
 
 
 if __name__ == '__main__':
 
    #linear_to_mel_weight_matrix_test(26, 512, 16000, 80, 3800)
-   mfcc_HTK_test()
+   #mfcc_HTK_test()
